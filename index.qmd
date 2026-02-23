@@ -1,7 +1,7 @@
 ---
 title: "住宅選定レポート：高砂市・加古川市・明石市"
 subtitle: "合理的な住宅選択のための比較分析"
-author: ""
+author: "hirosuke"
 date: today
 date-format: "YYYY年MM月DD日"
 ---
