@@ -1,0 +1,714 @@
+---
+title: "住宅選定レポート：高砂市・加古川市・明石市"
+subtitle: "合理的な住宅選択のための比較分析"
+author: ""
+date: today
+date-format: "YYYY年MM月DD日"
+---
+
+```{python}
+#| label: setup
+#| include: false
+
+import pandas as pd
+import plotly.graph_objects as go
+import plotly.express as px
+from pathlib import Path
+from IPython.display import display
+
+DATA_DIR = Path("data")
+
+CITY_COLORS = {
+    "高砂市":  "#2196F3",
+    "加古川市": "#4CAF50",
+    "明石市":  "#FF9800",
+}
+```
+
+## エグゼクティブサマリー {#sec-summary}
+
+本レポートは、兵庫県内の3市（高砂市・加古川市・明石市）における中古住宅購入の意思決定を支援するため、複数の評価軸にわたる比較分析を行ったものです。
+
+::: {.callout-note}
+**通勤先**: 神戸製鋼所 高砂製作所（高砂市荒井町新浜2-3-1）
+**取得形態**: 中古住宅購入
+**重視事項**: 治安・安全性（20%）、教育環境（20%）、子育て支援（15%）
+:::
+
+---
+
+## 評価方法・前提条件 {#sec-method}
+
+### 評価フレームワーク
+
+以下の6軸で各市を評価し、重み付きスコア（各軸5点満点）で総合評価を算出する。30代前半・1〜2年以内に出産予定という家族計画を踏まえ、子育て支援・医療環境を新たに追加した。
+
+```{python}
+#| label: weights-table
+
+weights = {
+    "評価軸": ["治安・安全性", "教育環境", "交通アクセス", "子育て支援・行政", "医療環境", "住宅価格"],
+    "重み": ["20%", "20%", "10%", "15%", "10%", "25%"],
+    "選定理由": [
+        "子どもの安全な育ちに直結",
+        "長期的な教育選択肢（保育〜高校）",
+        "高砂製作所への通勤効率",
+        "保育料・医療費助成など出産後の家計負担（新規）",
+        "産婦人科・NICU・小児救急など出産育児の医療アクセス（新規）",
+        "中古住宅購入コスト",
+    ]
+}
+pd.DataFrame(weights).style.hide(axis="index")
+```
+
+---
+
+## 各市の概要 {#sec-overview}
+
+| 項目 | 高砂市 | 加古川市 | 明石市 |
+|------|--------|----------|--------|
+| 人口（2024年） | 約8.3万人 | 約25.7万人 | 約29.7万人 |
+| 面積 | 約34 km² | 約138 km² | 約49 km² |
+| 特徴 | 工業都市・職場最寄り | 播磨地域の中心都市 | 子育て支援・神戸隣接 |
+
+---
+
+## 評価軸別分析 {#sec-analysis}
+
+### 交通アクセス {#sec-access}
+
+通勤先（高砂製作所）までのアクセスを評価する。
+
+```{python}
+#| label: commute-table
+
+commute = {
+    "市": ["高砂市", "加古川市", "明石市"],
+    "車（目安）": ["5〜15分", "20〜30分", "30〜45分"],
+    "電車": ["山陽荒井駅 / JR宝殿駅", "JR加古川駅経由・乗換1回", "JR/山陽・乗換1〜2回"],
+    "スコア（5点満点）": [5, 3, 2],
+}
+pd.DataFrame(commute).style.hide(axis="index")
+```
+
+*出典: Googleマップ・各社乗換案内（手動調査）*
+
+### 治安・安全性 {#sec-safety}
+
+犯罪統計と自然災害リスクの2軸で評価する。
+
+```{python}
+#| label: safety-table
+
+crime_file = DATA_DIR / "crime_stats.csv"
+if crime_file.exists():
+    df_crime = pd.read_csv(crime_file, encoding="utf-8-sig")
+    display(df_crime[["市", "年", "認知件数（件）", "人口1万人あたり認知件数"]].style.hide(axis="index").format({"人口1万人あたり認知件数": "{:.1f}"}))
+else:
+    print("⚠ データ未取得: data_collect.py を実行してください")
+```
+
+```{python}
+#| label: safety-chart
+
+if crime_file.exists():
+    fig = px.bar(
+        df_crime,
+        x="市",
+        y="人口1万人あたり認知件数",
+        color="市",
+        color_discrete_map={"高砂市": "#1f77b4", "加古川市": "#ff7f0e", "明石市": "#2ca02c"},
+        title="人口1万人あたり刑法犯認知件数（令和6年確定値）",
+        labels={"人口1万人あたり認知件数": "認知件数（件/万人）"},
+        text_auto=True,
+    )
+    fig.update_layout(showlegend=False, yaxis_title="件/万人")
+    fig.show()
+```
+
+*出典: 兵庫県警察「市区町別刑法犯認知状況（令和6年確定値）」<https://www.police.pref.hyogo.lg.jp/seikatu/gaitou/statis/data/R06.pdf>*
+
+**自然災害リスク（国土交通省ハザードマップより）**
+
+| リスク種別 | 高砂市 | 加古川市 | 明石市 |
+|-----------|--------|----------|--------|
+| 津波・高潮 | 高（沿岸部） | 中（一部沿岸） | 中（一部沿岸） |
+| 洪水（河川） | 高（加古川河口） | 高（加古川沿い） | 低〜中 |
+| 土砂災害 | 低 | 中（北部） | 低 |
+
+*出典: 国土交通省 ハザードマップポータルサイト <https://disaportal.gsi.go.jp/>（各市ハザードマップより整理）*
+
+::: {.callout-warning}
+高砂市・加古川市は**加古川下流域**に位置し、洪水リスクが高い地区があります。
+購入前に物件ごとのハザードマップ確認を推奨します。
+:::
+
+### 保育園・就学前教育 {#sec-nursery}
+
+認可保育所・認定こども園の量と質（保育料・待機児童・病児保育等）を評価する。
+
+```{python}
+#| label: nursery-bar
+
+nursery_file = DATA_DIR / "nursery.csv"
+if nursery_file.exists():
+    df_nur = pd.read_csv(nursery_file, encoding="utf-8-sig")
+
+    fig = go.Figure()
+    fig.add_trace(go.Bar(
+        name="認可保育所",
+        x=df_nur["市"],
+        y=df_nur["認可保育所数"],
+        marker_color=[CITY_COLORS[c] for c in df_nur["市"]],
+        opacity=0.9,
+    ))
+    fig.add_trace(go.Bar(
+        name="認定こども園",
+        x=df_nur["市"],
+        y=df_nur["認定こども園数"],
+        marker_color=[CITY_COLORS[c] for c in df_nur["市"]],
+        opacity=0.5,
+    ))
+    fig.update_layout(
+        barmode="stack",
+        title="就学前教育施設数（認可保育所＋認定こども園）",
+        yaxis_title="施設数（園）",
+        xaxis_title="",
+        legend=dict(orientation="v", x=0.98, y=0.98, xanchor="right", yanchor="top"),
+    )
+    fig.show()
+else:
+    print("⚠ データ未取得: data_collect.py を実行してください")
+```
+
+```{python}
+#| label: nursery-table
+
+if nursery_file.exists():
+    display_cols = ["市", "待機児童数（人）", "保育料月額目安（万円）", "第2子以降無償化", "病児保育対応施設数"]
+    display(df_nur[display_cols].style.hide(axis="index").format({"保育料月額目安（万円）": "{:.1f}"}))
+```
+
+*出典: 各市公式ウェブサイト / こども家庭庁「保育所等関連状況取りまとめ」（2023年4月時点）*
+
+::: {.callout-tip}
+**明石市の特記事項**: 全国初の「第2子以降の保育料を所得制限なく全額無償化」を独自施策として実施。保育料の実質負担が大幅に軽減され、近年の人口増加を支える要因のひとつ。
+:::
+
+### 高校進学環境 {#sec-highschool}
+
+市内の公立高校の偏差値分布から、進学環境の質と選択肢の広さを評価する。
+
+```{python}
+#| label: highschool-dot
+
+hs_file = DATA_DIR / "highschool.csv"
+if hs_file.exists():
+    df_hs = pd.read_csv(hs_file, encoding="utf-8-sig")
+
+    fig = px.strip(
+        df_hs,
+        x="偏差値",
+        y="市",
+        color="市",
+        hover_data=["高校名", "偏差値"],
+        title="市内公立高校 偏差値分布",
+        color_discrete_map=CITY_COLORS,
+        stripmode="overlay",
+    )
+    fig.update_traces(marker_size=14, marker_opacity=0.85)
+    fig.update_layout(
+        xaxis=dict(range=[35, 75], title="偏差値"),
+        yaxis_title="",
+        showlegend=False,
+        height=300,
+    )
+    fig.show()
+else:
+    print("⚠ データ未取得: data_collect.py を実行してください")
+```
+
+```{python}
+#| label: highschool-table
+
+if hs_file.exists():
+    display(
+        df_hs.sort_values(["市", "偏差値"], ascending=[True, False])
+        .style.hide(axis="index")
+        .background_gradient(subset=["偏差値"], cmap="Blues")
+    )
+```
+
+*出典: みんなの高校情報 / 高校受験ナビ（2024年度参照値）。偏差値は年度により変動します。*
+
+::: {.callout-note}
+**加古川東高校（偏差値68）** は兵庫県の公立高校でも上位圏に位置し、進学実績が高い。子どもの進学を重視する場合、加古川市は有力な選択肢となる。
+:::
+
+### 子育て支援・行政サービス {#sec-childcare}
+
+各市の子育て支援施策を比較する。医療費助成・保育料補助・支援センター数など、出産後の家計と生活に直結する指標を評価する。
+
+```{python}
+#| label: childcare-table
+
+cc_file = DATA_DIR / "childcare_support.csv"
+if cc_file.exists():
+    df_cc = pd.read_csv(cc_file, encoding="utf-8-sig")
+    display(
+        df_cc[["市", "子ども医療費助成年齢上限", "子ども医療費所得制限",
+               "子育て支援センター数", "第2子以降保育料無償化", "病児保育対応施設数"]]
+        .style.hide(axis="index")
+    )
+else:
+    print("⚠ データ未取得: data_collect.py を実行してください")
+```
+
+```{python}
+#| label: childcare-bar
+
+if cc_file.exists():
+    fig = px.bar(
+        df_cc,
+        x="市",
+        y="子育て支援センター数",
+        color="市",
+        color_discrete_map=CITY_COLORS,
+        title="子育て支援センター数",
+        text="子育て支援センター数",
+    )
+    fig.update_traces(textposition="outside")
+    fig.update_layout(showlegend=False, yaxis_title="施設数", height=350)
+    fig.show()
+```
+
+*出典: 各市公式ウェブサイト / こども家庭庁（2024年度）*
+
+::: {.callout-tip}
+**明石市の特記事項**: 2013年度より全国初の「第2子以降の保育料を所得制限なく全額無償化」を実施。子ども医療費助成も所得制限なし（18歳まで）。子育て支援の先進自治体として全国的に注目されており、近年の人口増加を支える主要因のひとつ。
+:::
+
+### 医療環境 {#sec-medical}
+
+出産・育児期に直結する産婦人科・小児科の充実度を比較する。NICU（新生児集中治療室）保有や夜間救急小児対応は、出産後の安心感に大きく関わる。
+
+```{python}
+#| label: medical-table
+
+med_file = DATA_DIR / "medical.csv"
+if med_file.exists():
+    df_med = pd.read_csv(med_file, encoding="utf-8-sig")
+    display(
+        df_med[["市", "産婦人科・産科施設数", "小児科施設数",
+                "総合病院数（200床以上）", "NICU保有", "夜間救急小児対応"]]
+        .style.hide(axis="index")
+    )
+else:
+    print("⚠ データ未取得: data_collect.py を実行してください")
+```
+
+```{python}
+#| label: medical-bar
+
+if med_file.exists():
+    fig = go.Figure()
+    fig.add_trace(go.Bar(
+        name="産婦人科・産科",
+        x=df_med["市"],
+        y=df_med["産婦人科・産科施設数"],
+        marker_color=[CITY_COLORS[c] for c in df_med["市"]],
+        opacity=1.0,
+        text=df_med["産婦人科・産科施設数"],
+        textposition="outside",
+    ))
+    fig.add_trace(go.Bar(
+        name="小児科",
+        x=df_med["市"],
+        y=df_med["小児科施設数"],
+        marker_color=[CITY_COLORS[c] for c in df_med["市"]],
+        opacity=0.5,
+        text=df_med["小児科施設数"],
+        textposition="outside",
+    ))
+    fig.update_layout(
+        barmode="group",
+        title="医療機関数比較（産婦人科・小児科）",
+        yaxis_title="施設数",
+        height=380,
+    )
+    fig.show()
+```
+
+*出典: 厚生労働省「医療機能情報提供制度（ナビイ）」/ 各病院公式HP（2024年度）*
+
+::: {.callout-warning}
+**高砂市の注意点**: 市内の産婦人科施設は2か所と少なく、出産・緊急時は加古川市・姫路市の医療機関に依存するケースがある。NICU保有病院も市内にないため、ハイリスク出産に備えた分娩先の事前確認を推奨する。
+:::
+
+### 住宅価格 {#sec-price}
+
+不動産情報ライブラリ（国土交通省）の成約・取引価格データに基づく。戸建て・マンション別の価格分布と築年数の内訳を確認する。
+
+```{python}
+#| label: price-plot-by-type
+
+price_file = DATA_DIR / "housing_prices.csv"
+if price_file.exists():
+    df_price = pd.read_csv(price_file, encoding="utf-8-sig")
+
+    # 種別×市の箱ひげ図
+    fig = px.box(
+        df_price,
+        x="市",
+        y="取引価格（万円）",
+        color="種別",
+        title="中古住宅 取引価格分布（種別別）",
+        labels={"取引価格（万円）": "取引価格（万円）", "市": ""},
+        category_orders={"市": ["高砂市", "加古川市", "明石市"]},
+    )
+    fig.update_layout(yaxis_range=[0, 8000], legend_title="種別")
+    fig.show()
+else:
+    print("⚠ データ未取得: data_collect.py を実行してください")
+```
+
+```{python}
+#| label: price-summary-table
+
+if price_file.exists():
+    # 市×種別のクロス集計
+    summary = (
+        df_price.groupby(["市", "種別"])["取引価格（万円）"]
+        .agg(件数="count", 最安値="min", 中央値="median", 平均="mean", 最高値="max")
+        .round(0)
+        .astype(int)
+    )
+    display(summary)
+```
+
+```{python}
+#| label: price-age-hist
+
+if price_file.exists():
+    import re
+
+    # 建築年から西暦を抽出（和暦・西暦どちらにも対応）
+    def wareki_to_seireki(s):
+        s = str(s)
+        m = re.match(r"昭和(\d+)年", s)
+        if m:
+            return 1925 + int(m.group(1))
+        m = re.match(r"平成(\d+)年", s)
+        if m:
+            return 1988 + int(m.group(1))
+        m = re.match(r"令和(\d+)年", s)
+        if m:
+            return 2018 + int(m.group(1))
+        m = re.match(r"(\d{4})年", s)  # マンションCSVは西暦直接表記
+        if m:
+            return int(m.group(1))
+        return None
+
+    df_price["建築西暦"] = df_price["建築年"].apply(wareki_to_seireki)
+    df_age = df_price.dropna(subset=["建築西暦"]).copy()
+    df_age["築年数"] = 2025 - df_age["建築西暦"].astype(int)
+    df_age = df_age[df_age["築年数"].between(0, 60)]
+
+    fig = px.histogram(
+        df_age,
+        x="築年数",
+        color="市",
+        facet_row="種別",
+        facet_col="市",
+        nbins=20,
+        title="築年数分布（種別×市・〜60年）",
+        labels={"築年数": "築年数（年）", "count": "件数"},
+        color_discrete_map=CITY_COLORS,
+        category_orders={"市": ["高砂市", "加古川市", "明石市"], "種別": ["戸建て", "マンション"]},
+    )
+    fig.update_layout(height=500, showlegend=False, yaxis_title="件数")
+    fig.for_each_annotation(lambda a: a.update(text=a.text.split("=")[-1]))
+    fig.show()
+```
+
+*出典: 国土交通省「不動産情報ライブラリ」<https://www.reinfolib.mlit.go.jp/>（2024年第4四半期〜2025年第3四半期の成約・取引価格情報）*
+
+#### 現在の売出し価格（SUUMO掲載物件）
+
+国土交通省データは**成約済みの取引価格**であるのに対し、SUUMOの掲載物件は**現在購入可能な物件の売出し価格**を示す。
+両者を比較することで「過去の相場」と「今すぐ買える価格水準」のギャップを把握できる。
+
+```{python}
+#| label: suumo-load
+
+suumo_file = DATA_DIR / "suumo_listings.csv"
+if suumo_file.exists():
+    df_suumo = pd.read_csv(suumo_file, encoding="utf-8-sig")
+    df_suumo["データソース"] = "売出し価格（SUUMO）"
+    _suumo_ok = len(df_suumo) > 0
+else:
+    _suumo_ok = False
+    print("⚠ SUUMOデータ未取得: scraping_suumo.py を実行してください")
+```
+
+```{python}
+#| label: suumo-price-compare
+
+if _suumo_ok:
+    # 国土交通省データに「データソース」列を追加してSUUMOと結合
+    df_mlit = df_price.rename(columns={"取引価格（万円）": "価格（万円）"}).copy()
+    df_mlit["データソース"] = "成約価格（国交省）"
+
+    df_combined = pd.concat([
+        df_mlit[["市", "種別", "価格（万円）", "データソース"]],
+        df_suumo[["市", "種別", "価格（万円）", "データソース"]],
+    ], ignore_index=True)
+    df_combined = df_combined.dropna(subset=["価格（万円）"])
+    df_combined = df_combined[df_combined["価格（万円）"].between(100, 12000)]
+
+    fig = px.box(
+        df_combined,
+        x="市",
+        y="価格（万円）",
+        color="データソース",
+        facet_col="種別",
+        title="住宅価格比較：成約価格（国交省）vs 売出し価格（SUUMO）",
+        labels={"価格（万円）": "価格（万円）", "市": ""},
+        category_orders={
+            "市": ["高砂市", "加古川市", "明石市"],
+            "種別": ["戸建て", "マンション"],
+        },
+        color_discrete_map={
+            "成約価格（国交省）": "#78909C",
+            "売出し価格（SUUMO）": "#EF5350",
+        },
+    )
+    fig.update_layout(height=450, legend_title="データソース")
+    fig.for_each_annotation(lambda a: a.update(text=a.text.split("=")[-1]))
+    fig.show()
+```
+
+```{python}
+#| label: suumo-summary-table
+
+if _suumo_ok:
+    suumo_summary = (
+        df_suumo.dropna(subset=["価格（万円）"])
+        .groupby(["市", "種別"])["価格（万円）"]
+        .agg(件数="count", 最安値="min", 中央値="median", 平均="mean", 最高値="max")
+        .round(0)
+        .astype(int)
+    )
+    display(suumo_summary)
+```
+
+```{python}
+#| label: suumo-area-scatter
+
+if _suumo_ok:
+    import re as _re
+
+    try:
+        import statsmodels  # noqa: F401
+        _trendline = "ols"
+    except ImportError:
+        _trendline = None  # statsmodels 未インストール時はトレンド線なし
+
+    def extract_year(text: str):
+        """築年月テキストから西暦を抽出する（例: '1990年3月' → 1990）"""
+        m = _re.search(r"(\d{4})年", str(text))
+        return int(m.group(1)) if m else None
+
+    df_s = df_suumo.dropna(subset=["価格（万円）"]).copy()
+    df_s["築西暦"] = df_s["築年月"].apply(extract_year)
+    df_s["築年数"] = 2026 - df_s["築西暦"].where(df_s["築西暦"].notna())
+
+    # 戸建て: 建物面積 vs 価格
+    df_ko = df_s[(df_s["種別"] == "戸建て") & df_s["建物面積（㎡）"].notna()].copy()
+    # マンション: 専有面積 vs 価格
+    df_ms = df_s[(df_s["種別"] == "マンション") & df_s["専有面積（㎡）"].notna()].copy()
+    df_ms["建物面積（㎡）"] = df_ms["専有面積（㎡）"]  # 共通軸として扱う
+
+    df_scatter = pd.concat([
+        df_ko[["市", "種別", "価格（万円）", "建物面積（㎡）", "築年数", "間取り"]],
+        df_ms[["市", "種別", "価格（万円）", "建物面積（㎡）", "築年数", "間取り"]],
+    ], ignore_index=True)
+    df_scatter = df_scatter[
+        df_scatter["建物面積（㎡）"].between(10, 300) &
+        df_scatter["価格（万円）"].between(100, 12000)
+    ]
+
+    if len(df_scatter) > 0:
+        fig = px.scatter(
+            df_scatter,
+            x="建物面積（㎡）",
+            y="価格（万円）",
+            color="市",
+            facet_col="種別",
+            hover_data=["間取り", "築年数"],
+            trendline=_trendline,
+            title="SUUMO掲載物件：面積 vs 価格" + ("（回帰直線付き）" if _trendline else ""),
+            labels={"建物面積（㎡）": "面積（㎡）※マンションは専有面積"},
+            color_discrete_map=CITY_COLORS,
+            category_orders={"市": ["高砂市", "加古川市", "明石市"], "種別": ["戸建て", "マンション"]},
+        )
+        fig.update_layout(height=450)
+        fig.for_each_annotation(lambda a: a.update(text=a.text.split("=")[-1]))
+        fig.show()
+    else:
+        print("⚠ 散布図を描画するための面積データが不足しています")
+```
+
+*出典: SUUMO「中古一戸建て・中古マンション」掲載物件（scraping_suumo.py 実行時点の売出し価格。成約を保証するものではない）*
+
+---
+
+## 総合スコアリング {#sec-scoring}
+
+```{python}
+#| label: scoring-calc
+#| include: false
+
+# 住宅価格スコアを実データから計算（中央値が低いほど高スコア）
+price_scores = {"高砂市": 5, "加古川市": 4, "明石市": 2}  # デフォルト
+if (DATA_DIR / "housing_prices.csv").exists():
+    df_p = pd.read_csv(DATA_DIR / "housing_prices.csv", encoding="utf-8-sig")
+    medians = df_p.groupby("市")["取引価格（万円）"].median()
+    max_med = medians.max()
+    # 最安値を5点、最高値を1点に線形変換
+    for city in medians.index:
+        price_scores[city] = round(5 - 4 * (medians[city] - medians.min()) / (max_med - medians.min()), 1)
+
+# 犯罪スコアを兵庫県下平均と比較して計算（件数が少ないほど高スコア）
+# 県下平均を3点基準とし、0件→5点、県下平均の2倍→1点で線形スコア化
+# 出典: 兵庫県警察「市区町別刑法犯認知状況（令和6年確定値）」（県下合計: 37,817件 / 533万人 = 71.0件/万人）
+PREF_CRIME_RATE = 71.0  # 兵庫県下 人口1万人あたり認知件数（令和6年確定値）
+crime_scores = {"高砂市": 5, "加古川市": 4, "明石市": 3}  # デフォルト
+if (DATA_DIR / "crime_stats.csv").exists():
+    df_c = pd.read_csv(DATA_DIR / "crime_stats.csv", encoding="utf-8-sig")
+    df_c = df_c.set_index("市")
+    rates = df_c["人口1万人あたり認知件数"]
+    for city in rates.index:
+        crime_scores[city] = round(
+            max(1.0, min(5.0, 5 - 4 * rates[city] / (2 * PREF_CRIME_RATE))), 1
+        )
+
+# 子育て支援スコア（childcare_support.csv から取得）
+childcare_scores = {"高砂市": 3, "加古川市": 3, "明石市": 5}  # デフォルト
+if (DATA_DIR / "childcare_support.csv").exists():
+    df_cc_s = pd.read_csv(DATA_DIR / "childcare_support.csv", encoding="utf-8-sig").set_index("市")
+    for city in df_cc_s.index:
+        childcare_scores[city] = df_cc_s.loc[city, "総合スコア（5点満点）"]
+
+# 医療環境スコア（medical.csv から取得）
+medical_scores = {"高砂市": 2, "加古川市": 4, "明石市": 5}  # デフォルト
+if (DATA_DIR / "medical.csv").exists():
+    df_med_s = pd.read_csv(DATA_DIR / "medical.csv", encoding="utf-8-sig").set_index("市")
+    for city in df_med_s.index:
+        medical_scores[city] = df_med_s.loc[city, "総合スコア（5点満点）"]
+
+# 評価スコア（5点満点）
+# 教育環境スコア: 保育園（明石が独自施策で優位）と高校（加古川東68が強み）を総合判断
+scores = {
+    "市": ["高砂市", "加古川市", "明石市"],
+    "治安・安全性": [crime_scores.get("高砂市", 5), crime_scores.get("加古川市", 4), crime_scores.get("明石市", 3)],
+    "教育環境":    [2.0, 4.0, 4.0],
+    "交通アクセス": [5.0, 3.0, 2.0],
+    "子育て支援":  [childcare_scores.get("高砂市", 3), childcare_scores.get("加古川市", 3), childcare_scores.get("明石市", 5)],
+    "医療環境":    [medical_scores.get("高砂市", 2), medical_scores.get("加古川市", 4), medical_scores.get("明石市", 5)],
+    "住宅価格":    [price_scores.get("高砂市", 5), price_scores.get("加古川市", 4), price_scores.get("明石市", 2)],
+}
+df_scores = pd.DataFrame(scores)
+
+WEIGHTS = {
+    "治安・安全性": 0.20,
+    "教育環境":    0.20,
+    "交通アクセス": 0.10,
+    "子育て支援":  0.15,
+    "医療環境":    0.10,
+    "住宅価格":    0.25,
+}
+axes = list(WEIGHTS.keys())
+
+df_scores[axes] = df_scores[axes].astype(float).round(1)
+df_scores["総合スコア"] = sum(
+    df_scores[axis] * w for axis, w in WEIGHTS.items()
+)
+df_scores["総合スコア"] = df_scores["総合スコア"].round(1)
+```
+
+```{python}
+#| label: radar-chart
+
+fig = go.Figure()
+for _, row in df_scores.iterrows():
+    vals = [row[ax] for ax in axes] + [row[axes[0]]]
+    fig.add_trace(go.Scatterpolar(
+        r=vals,
+        theta=axes + [axes[0]],
+        fill="toself",
+        name=row["市"],
+        line_color=CITY_COLORS.get(row["市"]),
+    ))
+
+fig.update_layout(
+    polar=dict(
+        radialaxis=dict(visible=True, range=[0, 5]),
+        angularaxis=dict(rotation=45, direction="clockwise"),
+    ),
+    title="総合評価レーダーチャート",
+    showlegend=True,
+    margin=dict(b=60),
+)
+fig.show()
+```
+
+```{python}
+#| label: score-table
+
+result = (
+    df_scores
+    .set_index("市")[axes + ["総合スコア"]]
+    .sort_values("総合スコア", ascending=False)
+    .round(1)
+)
+display(result.style.background_gradient(axis=None, cmap="YlGn", subset=["総合スコア"]).format("{:.1f}"))
+```
+
+---
+
+## 結論・推奨 {#sec-conclusion}
+
+```{python}
+#| label: conclusion
+
+best = df_scores.sort_values("総合スコア", ascending=False).iloc[0]
+second = df_scores.sort_values("総合スコア", ascending=False).iloc[1]
+print(f"総合スコア1位: {best['市']}（{best['総合スコア']:.2f}点）")
+print(f"総合スコア2位: {second['市']}（{second['総合スコア']:.2f}点）")
+```
+
+::: {.callout-important}
+**総合推奨先は上記スコアの1位の市です。**
+
+ただし、スコアは現時点のデータと重み付けに基づいた参考値です。
+最終判断の前に以下を確認することを強く推奨します：
+
+- **物件ごとのハザードマップ確認**（特に高砂市・加古川市の洪水リスク）
+- **通勤経路の実走・乗車体験**
+- **学区の小中学校の現地見学**
+- **周辺スーパー・医療機関の実地確認**
+:::
+
+---
+
+## データ出典一覧 {#sec-sources}
+
+| データ | 出典 | 取得方法 | 備考 |
+|--------|------|----------|------|
+| 住宅取引価格 | 国土交通省「不動産情報ライブラリ」| ブラウザよりCSVダウンロード | 2024Q4〜2025Q3 |
+| 犯罪統計 | 兵庫県警察「市町別刑法犯認知件数」| 手動入力（要最新確認） | 令和5年（2023年）|
+| 保育所・こども園 | 各市公式ウェブサイト / こども家庭庁 | 手動入力 | 2023年4月時点 |
+| 高校偏差値 | みんなの高校情報 / 高校受験ナビ | 手動入力 | 2024年度参照値 |
+| 自然災害リスク | 国土交通省「ハザードマップポータルサイト」| 目視確認・手動整理 | — |
+| 交通アクセス | Googleマップ・各社乗換案内 | 手動調査 | 概算値 |

@@ -1,0 +1,25 @@
+project:
+  type: default
+
+format:
+  html:
+    theme: cosmo
+    toc: true
+    toc-depth: 3
+    toc-title: "目次"
+    number-sections: true
+    lang: ja
+    code-fold: true
+    code-summary: "コードを表示"
+    embed-resources: true
+
+execute:
+  echo: false
+  warning: false
+  message: false
+
+jupyter:
+  kernelspec:
+    name: python3
+    language: python
+    display_name: Python 3
